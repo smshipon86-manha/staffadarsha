@@ -61,8 +61,6 @@ body{background:var(--bg);color:#1f2937;padding-bottom:20px}
 .serial-no{font-weight:800;color:var(--primary);font-size:12px}
 .serial-time{color:#0d8a72;font-weight:700;font-size:10.5px}
 .empty-serial{text-align:center;color:#6b7280;padding:15px;font-size:12.5px}
-.custom-op-box{display:flex;gap:5px}
-.custom-op-box input{display:none}
 
 /* ক্রেডিট */
 .footer-credit{text-align:right;margin-top:12px;padding-right:4px;font-size:11px;color:#6b7280;font-weight:600;font-style:italic}
@@ -132,12 +130,8 @@ body{background:var(--bg);color:#1f2937;padding-bottom:20px}
       <!-- ৭. সিরিয়াল প্রদানকারী ব্যক্তি -->
       <div class="form-group" style="grid-column: span 2;">
         <label>সিরিয়াল প্রদানকারী ব্যক্তি</label>
-        <div class="custom-op-box">
-          <select id="input-operator" class="input-control" onchange="toggleCustomOperator(this.value)" required>
-            <option value="">-- স্টাফ সিলেক্ট করুন --</option>
-          </select>
-          <input type="text" id="input-operator-custom" class="input-control" placeholder="নাম লিখুন..." autocomplete="off">
-        </div>
+        <input type="text" id="input-operator" class="input-control" list="operator-datalist" placeholder="স্টাফের নাম লিখুন" autocomplete="off" style="cursor:text;" required>
+        <datalist id="operator-datalist"></datalist>
       </div>
 
       <button type="submit" class="btn-submit" id="submit-btn">সিরিয়াল কনফার্ম করুন</button>
@@ -224,22 +218,9 @@ function fillDoctors(){
 }
 
 function fillOperators(){
- const s=document.getElementById('input-operator'),old=s.value;
- s.innerHTML='<option value="">-- স্টাফ সিলেক্ট করুন --</option>';
- operatorDocs.forEach(x=>{const o=document.createElement('option');o.value=x.name;o.textContent=x.name;s.appendChild(o);});
- const otherOpt=document.createElement('option');otherOpt.value="__CUSTOM__";otherOpt.textContent="অন্যান্য (হাতে লিখুন)";
- s.appendChild(otherOpt);
- if(operatorDocs.some(x=>x.name===old) || old==="__CUSTOM__")s.value=old;
-}
-
-window.toggleCustomOperator=function(val){
- const customInp=document.getElementById('input-operator-custom');
- if(val==="__CUSTOM__"){
-   customInp.style.display="block";customInp.required=true;
-   if(navigator.onLine) customInp.focus();
- }else{
-   customInp.style.display="none";customInp.required=false;customInp.value="";
- }
+ const dl=document.getElementById('operator-datalist');
+ dl.innerHTML='';
+ operatorDocs.forEach(x=>{const o=document.createElement('option');o.value=x.name;dl.appendChild(o);});
 }
 
 onSnapshot(collection(db,'doctors'),snap=>{doctorDocs=snap.docs.map(d=>({id:d.id,name:d.data().name||''})).filter(x=>x.name);fillDoctors();},err=>console.error('Doctors listener:',err));
@@ -288,10 +269,7 @@ window.addSerial=async function(event){
  const dateInput=document.getElementById('input-date'),date=dateInput.value;
  const pname=document.getElementById('input-pname').value.trim(),phone=document.getElementById('input-phone').value.trim(),village=document.getElementById('input-village').value.trim(),doctor=document.getElementById('input-doctor').value,patientType=document.getElementById('input-patient-type').value,btn=document.getElementById('submit-btn');
  
- let operator=document.getElementById('input-operator').value;
- if(operator==="__CUSTOM__"){
-   operator=document.getElementById('input-operator-custom').value.trim();
- }
+ const operator=document.getElementById('input-operator').value.trim();
 
  if(!date||!pname||!village||!doctor||!patientType||!operator){alert('দয়া করে প্রয়োজনীয় সকল তথ্য পূরণ করুন।');return;}
  btn.disabled=true;btn.innerText='সংরক্ষণ হচ্ছে...';
@@ -309,7 +287,6 @@ window.addSerial=async function(event){
   showSuccessDetails(docData,isShaiful);
   
   document.getElementById('serial-form').reset();
-  document.getElementById('input-operator-custom').style.display="none";
   watchDoctorSerials();
  }catch(e){alert('সমস্যা হয়েছে: '+e.message);}finally{updateInternetStatus();}
 };
