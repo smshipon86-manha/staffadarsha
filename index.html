@@ -240,12 +240,19 @@ function formatHour12(h){
   return `${hour12}:00 ${period}`;
 }
 
+function getShaifulSpecial(n){
+  const tenBlock=Math.floor((n-1)/10);
+  if(tenBlock===0) return (n<=3||n>=9);
+  return (n%10===9||n%10===0);
+}
+
 function getShaifulSlot(n){
   n=parseInt(n,10);
   if(!Number.isFinite(n)||n<1)return null;
-  const block=Math.floor((n-1)/10),start=8+block,end=start+1;
+  // সময়ের ব্লক: প্রতি ২০টি সিরিয়ালে ১ ঘন্টা (স্পেশাল নাম্বার প্যাটার্ন আগের ১০-ভিত্তিক নিয়মেই অপরিবর্তিত)
+  const hourBlock=Math.floor((n-1)/20),start=8+hourBlock,end=start+1;
   const timeStr = `${formatHour12(start)} - ${formatHour12(end)}`;
-  return {special:block===0?(n<=3||n>=9):(n%10===9||n%10===0),time:timeStr};
+  return {special:getShaifulSpecial(n),time:timeStr};
 }
 
 function nextSerialNumberForDoctor(items, doctor) {
@@ -318,17 +325,19 @@ function renderTodaySerials(items,doctor,date){
  box.innerHTML=docs.map((d, idx)=>{
   const theme = getDoctorTheme(idx);
   const isShaiful=isShaifulDoctor(d);
+  const typeBadge = (t) => t ? `<span style="background:${t==='নতুন'?'#dcfce7':'#fef3c7'}; color:${t==='নতুন'?'#15803d':'#b45309'}; padding: 2px 7px; border-radius: 4px; font-weight: bold; font-size: 11px;">${safe(t)}</span>` : '<span style="color:#aaa; font-size:11px;">-</span>';
+
   const rows=groups[d].sort((a,b)=>(parseInt(a.serialNo)||0)-(parseInt(b.serialNo)||0)).map(x=>{
     if(isShaiful){
-      return `<tr><td class="serial-no" style="color:${theme.text}">${safe(x.serialNo)}</td><td class="serial-time">${safe(x.timeSlot||'--')}</td><td class="patient-name-bold">${safe(x.pname)}</td><td>${safe(x.village)}</td><td>${safe(x.operator)}</td></tr>`;
+      return `<tr><td class="serial-no" style="color:${theme.text}">${safe(x.serialNo)}</td><td class="serial-time">${safe(x.timeSlot||'--')}</td><td class="patient-name-bold">${safe(x.pname)}</td><td>${safe(x.village)}</td><td>${typeBadge(x.patientType)}</td><td>${safe(x.operator)}</td></tr>`;
     }else{
-      return `<tr><td class="serial-no" style="color:${theme.text}">${safe(x.serialNo)}</td><td class="patient-name-bold">${safe(x.pname)}</td><td>${safe(x.village)}</td><td>${safe(x.operator)}</td></tr>`;
+      return `<tr><td class="serial-no" style="color:${theme.text}">${safe(x.serialNo)}</td><td class="patient-name-bold">${safe(x.pname)}</td><td>${safe(x.village)}</td><td>${typeBadge(x.patientType)}</td><td>${safe(x.operator)}</td></tr>`;
     }
   }).join('');
   
   const headHtml = isShaiful 
-    ? `<tr><th style="width:16%">সিরিয়াল</th><th style="width:24%">সময়</th><th style="width:26%">রোগীর নাম</th><th style="width:17%">গ্রাম</th><th style="width:17%">স্টাফ</th></tr>`
-    : `<tr><th style="width:20%">সিরিয়াল</th><th style="width:36%">রোগীর নাম</th><th style="width:22%">গ্রাম</th><th style="width:22%">স্টাফ</th></tr>`;
+    ? `<tr><th style="width:14%">সিরিয়াল</th><th style="width:20%">সময়</th><th style="width:22%">রোগীর নাম</th><th style="width:15%">গ্রাম</th><th style="width:14%">রোগীর ধরন</th><th style="width:15%">স্টাফ</th></tr>`
+    : `<tr><th style="width:17%">সিরিয়াল</th><th style="width:29%">রোগীর নাম</th><th style="width:18%">গ্রাম</th><th style="width:18%">রোগীর ধরন</th><th style="width:18%">স্টাফ</th></tr>`;
 
   return `<div class="doctor-column" style="border-color:${theme.border}"><div class="doctor-column-title" style="background:${theme.bg}; color:${theme.text}; border-color:${theme.border}">${safe(d)} <div class="doctor-column-date">তারিখ: ${safe(formatDateBD(date))}</div></div><table class="excel-table"><thead>${headHtml}</thead><tbody>${rows}</tbody></table></div>`;
  }).join('');
