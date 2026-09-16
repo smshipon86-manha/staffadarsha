@@ -44,6 +44,18 @@ body{background:var(--bg);color:#1f2937;padding-bottom:20px}
 .modal-close{display:block;margin:12px auto 0;background:var(--danger);color:#fff;border:0;padding:10px 24px;border-radius:8px;font-weight:700;cursor:pointer;width:100%}
 
 .note{font-size:11px;color:#6b7280;text-align:center;margin-top:8px}
+
+/* Login Overlay */
+#login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#0d8a72,#0a6c59);z-index:5000;display:flex;align-items:center;justify-content:center;padding:15px}
+.login-box{background:#fff;width:100%;max-width:340px;border-radius:16px;padding:30px 25px;box-shadow:0 10px 30px rgba(0,0,0,.25);text-align:center}
+.login-box .login-icon{font-size:40px;color:var(--primary);margin-bottom:8px}
+.login-box h2{color:#222;font-size:19px;margin-bottom:4px}
+.login-box p{color:#888;font-size:13px;margin-bottom:20px}
+.login-box .form-group{text-align:left;margin-bottom:14px}
+.login-box .form-group label{font-size:13px;font-weight:bold;color:#444;display:block;margin-bottom:6px}
+.login-error{color:var(--danger);font-size:13px;font-weight:bold;margin-bottom:10px;display:none}
+.btn-logout{background:none;border:none;color:#dc2626;font-size:12px;font-weight:bold;cursor:pointer;margin-top:4px}
+
 .today-card{margin-top:12px}
 .serial-list{width:100%}
 .doctor-columns{display:flex;flex-direction:column;gap:12px}
@@ -74,10 +86,33 @@ body{background:var(--bg);color:#1f2937;padding-bottom:20px}
 </style>
 </head>
 <body>
+
+<!-- Login Overlay -->
+<div id="login-overlay">
+    <div class="login-box">
+        <div class="login-icon"><i class="fa-solid fa-lock"></i></div>
+        <h2>স্টাফ লগইন</h2>
+        <p>আদর্শ ডায়াগনস্টিক সেন্টার</p>
+        <div id="login-error" class="login-error"><i class="fa-solid fa-circle-exclamation"></i> ইমেইল অথবা পাসওয়ার্ড ভুল হয়েছে</div>
+        <form id="login-form" onsubmit="return handleLogin(event)">
+            <div class="form-group">
+                <label>ইমেইল</label>
+                <input type="email" id="login-username" class="input-control" autocomplete="username" required>
+            </div>
+            <div class="form-group">
+                <label>পাসওয়ার্ড</label>
+                <input type="password" id="login-password" class="input-control" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn-submit"><i class="fa-solid fa-right-to-bracket"></i> লগইন করুন</button>
+        </form>
+    </div>
+</div>
+
 <header class="app-header">
   <div class="app-title"><i class="fa-solid fa-hospital"></i> আদর্শ ডায়াগনস্টিক সেন্টার</div>
   <div class="app-subtitle">স্টাফ সিরিয়াল এন্ট্রি</div>
   <span id="online-status" class="status"><i class="fa-solid fa-spinner fa-spin"></i> সংযোগ পরীক্ষা হচ্ছে...</span>
+  <button type="button" class="btn-logout" onclick="handleLogout()"><i class="fa-solid fa-right-from-bracket"></i> লগআউট</button>
 </header>
 
 <div class="container">
@@ -163,6 +198,7 @@ body{background:var(--bg);color:#1f2937;padding-bottom:20px}
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {getFirestore,collection,addDoc,onSnapshot,getDocs,query,where} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import {getAuth,signInWithEmailAndPassword,signOut,onAuthStateChanged,setPersistence,browserLocalPersistence} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const firebaseConfig={
  apiKey:"AIzaSyDdSS-T4oCORhTmaeFxEIr2vNtyolLOHfw",
@@ -174,6 +210,55 @@ const firebaseConfig={
  measurementId:"G-XBM8J33J3X"
 };
 const app=initializeApp(firebaseConfig);const db=getFirestore(app);
+const auth=getAuth(app);
+setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+window.handleLogin = async function(event) {
+    event.preventDefault();
+    const emailInput = document.getElementById('login-username');
+    const passInput = document.getElementById('login-password');
+    const errorBox = document.getElementById('login-error');
+    const submitBtn = document.querySelector('#login-form button[type="submit"]');
+
+    const email = emailInput.value.trim();
+    const password = passInput.value;
+
+    errorBox.style.display = 'none';
+    submitBtn.disabled = true;
+    submitBtn.innerText = 'লগইন হচ্ছে...';
+
+    try {
+        const loginPromise = signInWithEmailAndPassword(auth, email, password);
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject({ code: 'custom/timeout' }), 15000)
+        );
+        await Promise.race([loginPromise, timeoutPromise]);
+        document.getElementById('login-form').reset();
+    } catch (error) {
+        let msg = 'ইমেইল অথবা পাসওয়ার্ড ভুল হয়েছে';
+        if (error.code === 'auth/invalid-email') msg = 'সঠিক ইমেইল ঠিকানা দিন';
+        if (error.code === 'auth/too-many-requests') msg = 'অনেকবার চেষ্টা করা হয়েছে, কিছুক্ষণ পর আবার চেষ্টা করুন';
+        if (error.code === 'custom/timeout') msg = '১৫ সেকেন্ডেও সার্ভার থেকে উত্তর আসেনি — ইন্টারনেট সংযোগ যাচাই করুন';
+        errorBox.innerHTML = `<i class="fa-solid fa-circle-exclamation"></i> ${msg}`;
+        errorBox.style.display = 'block';
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket"></i> লগইন করুন';
+    }
+    return false;
+};
+
+window.handleLogout = function() {
+    if (confirm('আপনি কি লগআউট করতে চান?')) {
+        signOut(auth);
+    }
+};
+
+onAuthStateChanged(auth, (user) => {
+    const overlay = document.getElementById('login-overlay');
+    overlay.style.display = user ? 'none' : 'flex';
+});
+
 let doctorDocs=[],operatorDocs=[],todayDoctorUnsub=null;
 
 /* আলাদা আলাদা ডাক্তারের জন্য সুন্দর কালার প্যালেট */
