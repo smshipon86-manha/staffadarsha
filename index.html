@@ -331,11 +331,29 @@ function getShaifulSpecial(n){
   return (n%10===9||n%10===0);
 }
 
+
+// ব্রেক টাইম (শুধু ডাঃ শাফিউল আজমের জন্য): ১১:০০–১২:০০ এবং ২:০০–৩:০০ — এই দুই ঘন্টায় কোনো সিরিয়াল বসবে না।
+// সিরিয়াল নাম্বার একটানাই চলবে, শুধু ঘন্টা দুটি বাদ দিয়ে পরের ঘন্টায় সময় বসবে।
+const SHAIFUL_BREAK_HOURS = [11, 14];
+function shaifulBlockStartHour(blockIndex) {
+    let h = 8, count = 0;
+    while (true) {
+        if (SHAIFUL_BREAK_HOURS.includes(h)) { h++; continue; }
+        if (count === blockIndex) return h;
+        count++; h++;
+    }
+}
+function shaifulBlockForHour(hour24) {
+    let b = 0;
+    for (let h = 8; h < hour24; h++) { if (!SHAIFUL_BREAK_HOURS.includes(h)) b++; }
+    return b;
+}
+
 function getShaifulSlot(n){
   n=parseInt(n,10);
   if(!Number.isFinite(n)||n<1)return null;
   // সময়ের ব্লক: প্রতি ২০টি সিরিয়ালে ১ ঘন্টা (স্পেশাল নাম্বার প্যাটার্ন আগের ১০-ভিত্তিক নিয়মেই অপরিবর্তিত)
-  const hourBlock=Math.floor((n-1)/20),start=8+hourBlock,end=start+1;
+  const hourBlock=Math.floor((n-1)/20),start=shaifulBlockStartHour(hourBlock),end=start+1;
   const timeStr = `${formatHour12(start)} - ${formatHour12(end)}`;
   return {special:getShaifulSpecial(n),time:timeStr};
 }
